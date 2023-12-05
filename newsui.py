@@ -99,9 +99,8 @@ class TypingSpeedTester:
         typed_words = typed_text.split()
 
         elapsed_time = time.time() - self.start_time
-        words_per_minute = (len(typed_words) / elapsed_time) * 60 if elapsed_time > 0 else 0
-
         correct_letters = sum(len(word) for word in typed_words if word in words)
+        words_per_minute = ((correct_letters/5) / elapsed_time) * 60 if elapsed_time > 0 else 0
         total_letters = sum(len(word) for word in words)
 
         # Penalize for backspacing
@@ -112,6 +111,9 @@ class TypingSpeedTester:
 
         accuracy = (correct_letters / total_letters) * 100 if total_letters > 0 else 0
 
+        # Calculate combined score
+        combined_score = (0.8 * words_per_minute) + (0.2 * accuracy)
+
         result_text = f"{self.participant_name}'s Accuracy: {accuracy:.2f}%, Speed: {words_per_minute:.2f} wpm"
         self.result_label.config(text=result_text)
 
@@ -119,7 +121,7 @@ class TypingSpeedTester:
         self.conn.execute("INSERT INTO typing_results VALUES (?, ?, ?)", (self.participant_name, accuracy, words_per_minute))
         self.conn.commit()
 
-        self.participant_results.append((self.participant_name, accuracy, words_per_minute))
+        self.participant_results.append((self.participant_name, accuracy, words_per_minute, combined_score))
 
         self.current_participant_index += 1
         self.reset()
@@ -144,17 +146,17 @@ class TypingSpeedTester:
         final_window = tk.Toplevel(self.master)
         final_window.title("Final Results")
 
-        # Sort participants by accuracy and words per minute in descending order
-        self.participant_results.sort(key=lambda x: (x[1], x[2]), reverse=True)
+        # Sort participants by combined score in descending order
+        self.participant_results.sort(key=lambda x: x[3], reverse=True)
 
         listbox = Listbox(final_window, font=("Helvetica", 12), selectbackground='#3498db', selectmode=tk.SINGLE)
         listbox.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
 
         for participant in self.participant_results:
-            listbox.insert(tk.END, f"{participant[0]} - Accuracy: {participant[1]:.2f}%, Speed: {participant[2]:.2f} wpm")
+            listbox.insert(tk.END, f"{participant[0]} - Accuracy: {participant[1]:.2f}%, Speed: {participant[2]:.2f} wpm, Combined Score: {participant[3]:.2f}")
 
-        fastest_typist = self.participant_results[0] if self.participant_results else ("No participants", 0, 0)
-        fastest_label = Label(final_window, text=f"Fastest Typist: {fastest_typist[0]} with {fastest_typist[2]:.2f} wpm and {fastest_typist[1]:.2f}% accuracy", font=("Helvetica", 12), fg='#2ecc71')
+        fastest_typist = self.participant_results[0] if self.participant_results else ("No participants", 0, 0, 0)
+        fastest_label = Label(final_window, text=f"Fastest Typist: {fastest_typist[0]} with {fastest_typist[2]:.2f} wpm, {fastest_typist[1]:.2f}% accuracy, Combined Score: {fastest_typist[3]:.2f}", font=("Helvetica", 12), fg='#2ecc71')
         fastest_label.pack(pady=10)
 
         final_window.mainloop()
